@@ -1,1 +1,395 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#ffd21f">
+<meta name="description" content="Shop clothing, shoes, bags, accessories and home appliances at Mati Wears & Accessories.">
+<title>Mati Wears & Accessories</title>
+<link rel="manifest" href="manifest.json">
+<style>
+:root {
+  --yellow:#ffd21f;
+  --black:#171717;
+  --white:#fff;
+  --grey:#f4f4f4;
+  --muted:#777;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;color:var(--black);background:#fff}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+a{text-decoration:none;color:inherit}
+.topbar{background:var(--black);color:white;text-align:center;padding:9px;font-size:12px}
+header{background:white;position:sticky;top:0;z-index:20;border-bottom:1px solid #eee}
+.head{max-width:1200px;margin:auto;padding:15px 4%;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}
+.logo{font-size:25px;font-weight:1000;letter-spacing:-1px}
+.logo span{color:#d4a900}
+.search{flex:1;max-width:430px;display:flex}
+.search input{width:100%;padding:12px;border:1px solid #ddd;border-radius:7px 0 0 7px}
+.search button{background:var(--yellow);border:0;padding:0 16px;border-radius:0 7px 7px 0;font-weight:bold}
+.actions{display:flex;gap:9px;align-items:center}
+.btn{border:0;border-radius:6px;padding:11px 15px;font-weight:bold}
+.yellow{background:var(--yellow);color:#111}
+.dark{background:#171717;color:white}
+.light{background:#eee;color:#111}
+nav{background:var(--black);color:white;display:flex;justify-content:center;gap:25px;padding:13px;flex-wrap:wrap;font-size:13px}
+nav a:hover{color:var(--yellow)}
+.hero{min-height:390px;background:linear-gradient(90deg,rgba(0,0,0,.83),rgba(0,0,0,.12)),url('https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1600&q=85') center/cover;display:flex;align-items:center;color:white;padding:50px 8%}
+.hero-content{max-width:520px}
+.hero small{color:var(--yellow);font-weight:bold;letter-spacing:3px}
+.hero h1{font-size:clamp(38px,6vw,65px);line-height:1.02;margin:15px 0}
+.hero p{line-height:1.7;margin-bottom:22px}
+.section{max-width:1200px;margin:45px auto;padding:0 4%}
+.section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;gap:12px}
+.section-title h2{font-size:25px}
+.categories{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:14px}
+.category{border:1px solid #eee;border-radius:10px;overflow:hidden;background:#fff;text-align:center;cursor:pointer;transition:.2s}
+.category:hover{transform:translateY(-4px);border-color:var(--yellow)}
+.category img{width:100%;height:130px;object-fit:cover;background:#eee}
+.category strong{display:block;padding:13px 5px;font-size:14px}
+.products{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:18px}
+.product{border:1px solid #eee;border-radius:10px;overflow:hidden;background:white}
+.product img{width:100%;height:220px;object-fit:cover;background:#f1f1f1}
+.product-info{padding:13px}
+.product-info h3{font-size:15px;margin-bottom:8px}
+.price{font-weight:900;font-size:17px;margin-bottom:10px}
+.product-info button{width:100%}
+.empty{padding:30px;text-align:center;color:var(--muted);grid-column:1/-1}
+.promo{background:var(--yellow);padding:28px;border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+footer{background:#171717;color:white;padding:40px 5%;margin-top:50px}
+.footer-grid{max-width:1100px;margin:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:25px}
+footer p{color:#ccc;line-height:1.8;font-size:14px}
+footer h3{margin-bottom:12px;color:var(--yellow)}
+.overlay{display:none;position:fixed;inset:0;background:#0009;z-index:50;overflow:auto;padding:20px}
+.modal{max-width:650px;background:white;margin:35px auto;padding:24px;border-radius:12px;position:relative}
+.close{float:right;border:0;background:#eee;border-radius:50%;width:32px;height:32px;font-size:20px}
+.field{margin:13px 0}
+.field label{display:block;font-size:13px;font-weight:bold;margin-bottom:6px}
+.field input,.field textarea,.field select{width:100%;padding:12px;border:1px solid #ddd;border-radius:6px;background:white}
+.field textarea{min-height:80px}
+.modal h2{margin:8px 0 18px}
+.rowline{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #eee}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:15px 0}
+.tab{padding:10px 13px;border:0;background:#eee;border-radius:6px;font-weight:bold}
+.tab.active{background:var(--yellow)}
+.admin-panel{display:none;background:#f6f6f6;padding:25px 4%;min-height:500px}
+.admin-inner{max-width:1200px;margin:auto}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:18px 0}
+.stat{background:white;border-radius:9px;padding:18px;border:1px solid #eee}
+.stat small{color:#777}
+.stat h2{margin-top:9px;font-size:23px}
+.admin-card{background:white;padding:18px;border-radius:9px;margin:15px 0;overflow:auto}
+.admin-card h3{margin-bottom:12px}
+table{border-collapse:collapse;width:100%;min-width:570px;font-size:13px}
+td,th{text-align:left;padding:11px;border-bottom:1px solid #eee}
+td button{margin:2px}
+.hidden{display:none!important}
+.notice{padding:12px;background:#fff6cf;border-radius:7px;margin:12px 0;font-size:13px}
+@media(max-width:600px){
+ .head{justify-content:center}
+ .search{order:3;max-width:100%;flex-basis:100%}
+ .hero{min-height:350px;padding:35px 7%}
+ nav{gap:14px;font-size:12px}
+ .products{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .product img{height:165px}
+ .product-info{padding:10px}
+ .product-info h3{font-size:13px}
+ .section{margin:32px auto}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">WELCOME TO MATI WEARS & ACCESSORIES — SHOP SMART, DRESS BETTER</div>
+
+<header>
+ <div class="head">
+  <a class="logo" href="#">MATI <span>WEARS.</span></a>
+  <div class="search">
+   <input id="searchInput" placeholder="Search products..." oninput="renderProducts()">
+   <button onclick="renderProducts()">SEARCH</button>
+  </div>
+  <div class="actions">
+   <button class="btn light" onclick="openAccount()">Account</button>
+   <button class="btn yellow" onclick="openCart()">Cart (<span id="cartCount">0</span>)</button>
+  </div>
+ </div>
+ <nav>
+  <a href="#" onclick="filterCategory('All')">HOME</a>
+  <a href="#shop" onclick="filterCategory('Clothing')">CLOTHING</a>
+  <a href="#shop" onclick="filterCategory('Shoes')">SHOES</a>
+  <a href="#shop" onclick="filterCategory('Accessories')">ACCESSORIES</a>
+  <a href="#shop" onclick="filterCategory('Ladies Handbags')">HANDBAGS</a>
+  <a href="#shop" onclick="filterCategory('Men Bags')">MEN'S BAGS</a>
+  <a href="#shop" onclick="filterCategory('Home Appliances')">HOME APPLIANCES</a>
+ </nav>
+</header>
+
+<section class="hero">
+ <div class="hero-content">
+  <small>STYLE • QUALITY • VALUE</small>
+  <h1>YOUR STYLE.<br>YOUR STATEMENT.</h1>
+  <p>Discover clothing, shoes, bags, accessories and home essentials for every lifestyle. Find your next favourite item at Mati.</p>
+  <a href="#shop"><button class="btn yellow">SHOP COLLECTION</button></a>
+ </div>
+</section>
+
+<section class="section">
+ <div class="section-title"><h2>Shop by Category</h2></div>
+ <div class="categories">
+  <div class="category" onclick="filterCategory('Clothing')">
+   <img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=500&q=80"><strong>Clothing</strong>
+  </div>
+  <div class="category" onclick="filterCategory('Shoes')">
+   <img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=500&q=80"><strong>Shoes</strong>
+  </div>
+  <div class="category" onclick="filterCategory('Accessories')">
+   <img src="https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=500&q=80"><strong>Accessories</strong>
+  </div>
+  <div class="category" onclick="filterCategory('Ladies Handbags')">
+   <img src="https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=500&q=80"><strong>Ladies' Handbags</strong>
+  </div>
+  <div class="category" onclick="filterCategory('Men Bags')">
+   <img src="https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=500&q=80"><strong>Men's Bags</strong>
+  </div>
+  <div class="category" onclick="filterCategory('Home Appliances')">
+   <img src="https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=500&q=80"><strong>Home Appliances</strong>
+  </div>
+ </div>
+</section>
+
+<section class="section" id="shop">
+ <div class="section-title">
+  <h2 id="productHeading">Our Products</h2>
+  <select id="categoryFilter" onchange="filterCategory(this.value)" style="padding:10px;border:1px solid #ddd;border-radius:6px">
+   <option value="All">All categories</option>
+   <option>Clothing</option><option>Shoes</option><option>Accessories</option>
+   <option>Ladies Handbags</option><option>Men Bags</option><option>Home Appliances</option>
+  </select>
+ </div>
+ <div class="products" id="productGrid"><div class="empty">Loading products...</div></div>
+</section>
+
+<section class="section">
+ <div class="promo">
+  <div><h2>Find your next favourite.</h2><p>Explore new arrivals and everyday essentials.</p></div>
+  <a href="#shop"><button class="btn dark">EXPLORE THE STORE</button></a>
+ </div>
+</section>
+
+<footer>
+ <div class="footer-grid">
+  <div><h3>MATI WEARS</h3><p>Your destination for clothing, shoes, bags, accessories and home appliances.</p></div>
+  <div><h3>SHOP</h3><p>Clothing<br>Shoes<br>Accessories<br>Handbags<br>Home Appliances</p></div>
+  <div><h3>CONTACT</h3><p id="footerContact">Contact us through WhatsApp for enquiries and orders.</p><p id="footerDelivery"></p></div>
+  <div><h3>INFORMATION</h3><p>Secure shopping<br>Customer support<br>Order assistance</p></div>
+ </div>
+ <p style="text-align:center;margin-top:30px">© <span id="year"></span> Mati Wears & Accessories. All rights reserved.</p>
+</footer>
+
+<!-- ACCOUNT -->
+<div class="overlay" id="accountModal">
+ <div class="modal">
+  <button class="close" onclick="closeModal('accountModal')">×</button>
+  <h2>My Account</h2>
+  <div id="accountContent">
+   <div class="field"><label>Email</label><input id="loginEmail" type="email"></div>
+   <div class="field"><label>Password</label><input id="loginPassword" type="password"></div>
+   <button class="btn yellow" onclick="login()">Log in</button>
+   <button class="btn light" onclick="signup()">Create account</button>
+   <p id="accountMessage" style="margin-top:12px;font-size:13px"></p>
+  </div>
+ </div>
+</div>
+
+<!-- CART -->
+<div class="overlay" id="cartModal">
+ <div class="modal">
+  <button class="close" onclick="closeModal('cartModal')">×</button>
+  <h2>Your Shopping Cart</h2>
+  <div id="cartItems"></div>
+  <div class="rowline"><strong>Total</strong><strong id="cartTotal">₦0</strong></div>
+  <button class="btn yellow" style="width:100%;margin-top:15px" onclick="openCheckout()">PROCEED TO CHECKOUT</button>
+ </div>
+</div>
+
+<!-- CHECKOUT -->
+<div class="overlay" id="checkoutModal">
+ <div class="modal">
+  <button class="close" onclick="closeModal('checkoutModal')">×</button>
+  <h2>Checkout</h2>
+  <div class="field"><label>Full name *</label><input id="customerName"></div>
+  <div class="field"><label>Email</label><input id="customerEmail" type="email"></div>
+  <div class="field"><label>Phone / WhatsApp *</label><input id="customerPhone"></div>
+  <div class="field"><label>Delivery address *</label><textarea id="customerAddress"></textarea></div>
+  <div class="field"><label>Payment method</label>
+   <select id="paymentMethod"><option>Pay on Delivery</option><option>Bank Transfer</option></select>
+  </div>
+  <div id="bankDetails" class="notice"></div>
+  <button class="btn yellow" style="width:100%" onclick="placeOrder()">PLACE ORDER</button>
+  <p id="checkoutMessage" style="margin-top:12px"></p>
+ </div>
+</div>
+
+<!-- ADMIN LOGIN -->
+<div class="overlay" id="adminLoginModal">
+ <div class="modal">
+  <button class="close" onclick="closeModal('adminLoginModal')">×</button>
+  <h2>Administrator Login</h2>
+  <div class="field"><label>Email</label><input id="adminEmail" type="email" value="anitadokara378@gmail.com"></div>
+  <div class="field"><label>Password</label><input id="adminPassword" type="password"></div>
+  <button class="btn yellow" onclick="adminLogin()">Sign in</button>
+  <p id="adminLoginMessage"></p>
+ </div>
+</div>
+
+<!-- ADMIN DASHBOARD -->
+<section class="admin-panel" id="adminPanel">
+ <div class="admin-inner">
+  <div class="section-title"><h2>MATI ADMIN DASHBOARD</h2><button class="btn dark" onclick="adminLogout()">Log out</button></div>
+  <div class="tabs">
+   <button class="tab active" onclick="showAdminTab('overview',this)">Overview</button>
+   <button class="tab" onclick="showAdminTab('productsAdmin',this)">Products</button>
+   <button class="tab" onclick="showAdminTab('ordersAdmin',this)">Orders</button>
+   <button class="tab" onclick="showAdminTab('financeAdmin',this)">Finance</button>
+   <button class="tab" onclick="showAdminTab('settingsAdmin',this)">Settings</button>
+  </div>
+
+  <div id="overview" class="admin-tab">
+   <div class="stats">
+    <div class="stat"><small>Total orders</small><h2 id="statOrders">0</h2></div>
+    <div class="stat"><small>Confirmed revenue</small><h2 id="statRevenue">₦0</h2></div>
+    <div class="stat"><small>Total expenses</small><h2 id="statExpenses">₦0</h2></div>
+    <div class="stat"><small>Recorded profit</small><h2 id="statProfit">₦0</h2></div>
+   </div>
+   <div class="notice">Revenue is calculated from orders marked as paid. Expenses are entered manually by the administrator. Profit here is revenue minus recorded expenses, before any unrecorded costs.</div>
+   <button class="btn yellow" onclick="loadAdminData()">Refresh dashboard</button>
+  </div>
+
+  <div id="productsAdmin" class="admin-tab hidden">
+   <div class="admin-card">
+    <h3 id="productFormHeading">Add a product</h3>
+    <input type="hidden" id="editProductId">
+    <div class="field"><label>Product name</label><input id="pName"></div>
+    <div class="field"><label>Description</label><textarea id="pDescription"></textarea></div>
+    <div class="field"><label>Price (₦)</label><input id="pPrice" type="number" min="0"></div>
+    <div class="field"><label>Category</label>
+     <select id="pCategory">
+      <option>Clothing</option><option>Shoes</option><option>Accessories</option>
+      <option>Ladies Handbags</option><option>Men Bags</option><option>Home Appliances</option>
+     </select>
+    </div>
+    <div class="field"><label>Sizes (comma separated)</label><input id="pSizes"></div>
+    <div class="field"><label>Colours (comma separated)</label><input id="pColors"></div>
+    <div class="field"><label>Stock quantity</label><input id="pStock" type="number" min="0" value="0"></div>
+    <div class="field"><label>Product image</label><input id="pImage" type="file" accept="image/png,image/jpeg,image/webp"></div>
+    <button class="btn yellow" onclick="saveProduct()">Save product</button>
+    <button class="btn light" onclick="clearProductForm()">Clear</button>
+    <p id="productMessage"></p>
+   </div>
+   <div class="admin-card"><h3>Product inventory</h3><div id="adminProductsTable"></div></div>
+  </div>
+
+  <div id="ordersAdmin" class="admin-tab hidden">
+   <div class="admin-card"><h3>Customer orders</h3><div id="adminOrdersTable"></div></div>
+  </div>
+
+  <div id="financeAdmin" class="admin-tab hidden">
+   <div class="admin-card">
+    <h3>Record a business expense</h3>
+    <div class="field"><label>Description</label><input id="expenseDescription"></div>
+    <div class="field"><label>Category</label>
+     <select id="expenseCategory">
+      <option>Stock purchase</option><option>Delivery</option><option>Packaging</option>
+      <option>Advertising</option><option>Utilities</option><option>Rent</option><option>Other</option>
+     </select>
+    </div>
+    <div class="field"><label>Amount (₦)</label><input id="expenseAmount" type="number" min="1"></div>
+    <div class="field"><label>Date</label><input id="expenseDate" type="date"></div>
+    <div class="field"><label>Notes</label><textarea id="expenseNotes"></textarea></div>
+    <button class="btn yellow" onclick="addExpense()">Save expense</button>
+    <p id="expenseMessage"></p>
+   </div>
+   <div class="admin-card"><h3>Expense history</h3><div id="expensesTable"></div></div>
+  </div>
+
+  <div id="settingsAdmin" class="admin-tab hidden">
+   <div class="admin-card">
+    <h3>Store and payment settings</h3>
+    <div class="field"><label>WhatsApp number (international format, digits only)</label><input id="settingWhatsapp" placeholder="2348012345678"></div>
+    <div class="field"><label>Bank name</label><input id="settingBank"></div>
+    <div class="field"><label>Account name</label><input id="settingAccountName"></div>
+    <div class="field"><label>Account number</label><input id="settingAccountNumber"></div>
+    <div class="field"><label>Delivery information</label><textarea id="settingDelivery"></textarea></div>
+    <button class="btn yellow" onclick="saveSettings()">Save settings</button>
+    <p id="settingsMessage"></p>
+   </div>
+  </div>
+ </div>
+</section>
+
+<div style="text-align:center;padding:20px">
+ <button class="btn light" onclick="openAdminLogin()">Administrator access</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://fuapapprpsekrjioqjlx.supabase.co";
+const SUPABASE_KEY = "sb_publishable_-lZS8WZQEnE3I8mMS1rqtA_VbW5qv_7";
+const ADMIN_EMAIL = "anitadokara378@gmail.com";
+
+const supabaseClient = window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+let products = [];
+let cart = [];
+let currentUser = null;
+let storeSettings = {};
+let activeCategory = "All";
+let adminOrders = [];
+let adminExpenses = [];
+
+const $ = id => document.getElementById(id);
+const money = value => "₦" + Number(value || 0).toLocaleString("en-NG",{maximumFractionDigits:2});
+const safe = value => String(value ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function openModal(id){$(id).style.display="block"}
+function closeModal(id){$(id).style.display="none"}
+function openAccount(){openModal("accountModal")}
+function openAdminLogin(){openModal("adminLoginModal")}
+function openCart(){renderCart();openModal("cartModal")}
+function showMessage(id,message){$(id).textContent=message}
+
+async function loadSettings(){
+ const {data,error}=await supabaseClient.from("store_settings").select("*").eq("id",1).maybeSingle();
+ if(error){console.error(error);return}
+ storeSettings=data||{};
+ $("bankDetails").textContent=storeSettings.bank_name
+ ? `Bank: ${storeSettings.bank_name} | Account name: ${storeSettings.account_name} | Account number: ${storeSettings.account_number}`
+ : "Bank transfer details will be provided by the store administrator.";
+ $("footerContact").textContent=storeSettings.whatsapp_number
+ ? "WhatsApp: "+storeSettings.whatsapp_number
+ : "Contact us through WhatsApp for enquiries and orders.";
+ $("footerDelivery").textContent=storeSettings.delivery_information||"";
+}
+
+async function loadProducts(){
+ const {data,error}=await supabaseClient.from("products").select("*").eq("is_active",true).order("created_at",{ascending:false});
+ if(error){$("productGrid").innerHTML='<div class="empty">Unable to load products. Please refresh.</div>';console.error(error);return}
+ products=data||[];
+ renderProducts();
+}
+
+function filterCategory(category){
+ activeCategory=category||"All";
+ $("categoryFilter").value=activeCategory;
+ $("productHeading").textContent=activeCategory==="All"?"Our Products":activeCategory;
+ renderProducts();
+ $("shop").scrollIntoView({behavior:"smooth"});
+}
+
+function renderProducts(){
+ const search=$("searchInput").value.toLowerCase().trim();
+ const list=products.filter(p=>
+  (acti
