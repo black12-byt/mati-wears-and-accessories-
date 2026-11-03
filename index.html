@@ -392,4 +392,331 @@ function filterCategory(category){
 function renderProducts(){
  const search=$("searchInput").value.toLowerCase().trim();
  const list=products.filter(p=>
-  (acti
+  (activeCategory==="All"||p.category===activeCategory)&&
+  (p.name||"").toLowerCase().includes(search)
+ );
+ if(!list.length){$("productGrid").innerHTML='<div class="empty">No products found in this category yet.</div>';return}
+ $("productGrid").innerHTML=list.map(p=>`
+  <article class="product">
+   <img src="${safe(p.image_url||"https://placehold.co/500x500/f3f3f3/333?text=Mati+Wears")}" alt="${safe(p.name)}">
+   <div class="product-info">
+    <h3>${safe(p.name)}</h3>
+    <p class="price">${money(p.price)}</p>
+    <p style="font-size:12px;color:#777;margin-bottom:10px">${safe(p.category||"")}</p>
+    <button class="btn yellow" onclick="addToCart('${p.id}')">ADD TO CART</button>
+   </div>
+  </article>`).join("");
+}
+
+function addToCart(id){
+ const p=products.find(x=>x.id===id);
+ if(!p)return;
+ if(Number(p.stock)<=0){alert("This product is currently out of stock.");return}
+ const existing=cart.find(x=>x.id===id);
+ if(existing){
+  if(existing.quantity>=Number(p.stock)){alert("You have reached the available stock quantity.");return}
+  existing.quantity++;
+ }else cart.push({id:p.id,name:p.name,price:Number(p.price),image_url:p.image_url,quantity:1,stock:Number(p.stock)});
+ renderCart();
+ alert("Product added to cart.");
+}
+
+function renderCart(){
+ $("cartCount").textContent=cart.reduce((s,p)=>s+p.quantity,0);
+ $("cartItems").innerHTML=cart.length?cart.map(p=>`
+  <div class="rowline">
+   <div><strong>${safe(p.name)}</strong><br>${money(p.price)} × ${p.quantity}</div>
+   <div>
+    <button class="btn light" onclick="changeQuantity('${p.id}',-1)">−</button>
+    <button class="btn light" onclick="changeQuantity('${p.id}',1)">+</button>
+    <button class="btn light" onclick="removeCartItem('${p.id}')">×</button>
+   </div>
+  </div>`).join(""):'<p>Your cart is empty.</p>';
+ $("cartTotal").textContent=money(cart.reduce((s,p)=>s+p.price*p.quantity,0));
+}
+
+function changeQuantity(id,change){
+ const item=cart.find(x=>x.id===id);
+ if(!item)return;
+ const next=item.quantity+change;
+ if(next<=0){removeCartItem(id);return}
+ if(next>item.stock){alert("Not enough stock available.");return}
+ item.quantity=next;renderCart();
+}
+function removeCartItem(id){cart=cart.filter(x=>x.id!==id);renderCart()}
+
+async function signup(){
+ const email=$("loginEmail").value.trim();
+ const password=$("loginPassword").value;
+ if(!email||password.length<6){showMessage("accountMessage","Enter an email and a password of at least 6 characters.");return}
+ const {error}=await supabaseClient.auth.signUp({email,password});
+ showMessage("accountMessage",error?error.message:"Account created. Check your email if confirmation is required.");
+}
+async function login(){
+ const email=$("loginEmail").value.trim();
+ const password=$("loginPassword").value;
+ const {error}=await supabaseClient.auth.signInWithPassword({email,password});
+ showMessage("accountMessage",error?error.message:"You are now signed in.");
+ if(!error){await refreshSession();closeModal("accountModal")}
+}
+async function refreshSession(){
+ const {data}=await supabaseClient.auth.getSession();
+ currentUser=data.session?.user||null;
+}
+async function openCheckout(){
+ if(!cart.length){alert("Your cart is empty.");return}
+ closeModal("cartModal");
+ if(currentUser){
+  $("customerEmail").value=currentUser.email||"";
+  const {data}=await supabaseClient.from("profiles").select("full_name,phone").eq("id",currentUser.id).maybeSingle();
+  if(data){$("customerName").value=data.full_name||"";$("customerPhone").value=data.phone||""}
+ }
+ openModal("checkoutModal");
+}
+
+async function placeOrder(){
+ const name=$("customerName").value.trim();
+ const email=$("customerEmail").value.trim();
+ const phone=$("customerPhone").value.trim();
+ const address=$("customerAddress").value.trim();
+ const payment=$("paymentMethod").value;
+ if(!name||!phone||!address){showMessage("checkoutMessage","Please complete your name, phone and delivery address.");return}
+ if(!cart.length){showMessage("checkoutMessage","Your cart is empty.");return}
+ for(const item of cart){
+  const p=products.find(x=>x.id===item.id);
+  if(!p||Number(p.stock)<item.quantity){showMessage("checkoutMessage","Some items are no longer available in the requested quantity. Please refresh your cart.");return}
+ }
+ const total=cart.reduce((s,p)=>s+p.price*p.quantity,0);
+ const orderId=crypto.randomUUID();
+ const items=cart.map(p=>({product_id:p.id,name:p.name,price:p.price,quantity:p.quantity}));
+ const order={
+  id:orderId,
+  customer_id:currentUser?.id||null,
+  customer_name:name,
+  customer_email:email||null,
+  customer_phone:phone,
+  delivery_address:address,
+  items,
+  subtotal:total,
+  delivery_fee:0,
+  total_amount:total,
+  payment_method:payment,
+  payment_status:"pending",
+  order_status:"pending"
+ };
+ const {error}=await supabaseClient.from("orders").insert(order);
+ if(error){showMessage("checkoutMessage","Order could not be saved: "+error.message);return}
+ const message=`Hello Mati Wears, I placed an order.\nOrder: ${orderId}\nName: ${name}\nPhone: ${phone}\nAddress: ${address}\nPayment: ${payment}\nItems:\n${cart.map(p=>p.name+" x "+p.quantity+" - "+money(p.price*p.quantity)).join("\n")}\nTotal: ${money(total)}`;
+ const whatsapp=String(storeSettings.whatsapp_number||"").replace(/\D/g,"");
+ cart=[];
+ renderCart();
+ closeModal("checkoutModal");
+ alert("Your order has been saved. You can now send the order details through WhatsApp.");
+ if(whatsapp)window.open("https://wa.me/"+whatsapp+"?text="+encodeURIComponent(message),"_blank");
+ await loadProducts();
+}
+
+async function adminLogin(){
+ const email=$("adminEmail").value.trim().toLowerCase();
+ const password=$("adminPassword").value;
+ if(email!==ADMIN_EMAIL){showMessage("adminLoginMessage","This email is not the configured administrator email.");return}
+ const {error}=await supabaseClient.auth.signInWithPassword({email,password});
+ if(error){showMessage("adminLoginMessage",error.message);return}
+ await refreshSession();
+ const {data,error:checkError}=await supabaseClient.rpc("is_admin");
+ if(checkError||data!==true){
+  await supabaseClient.auth.signOut();
+  showMessage("adminLoginMessage","Administrator access was not confirmed. Check your admin setup.");
+  return;
+ }
+ closeModal("adminLoginModal");
+ $("adminPanel").style.display="block";
+ $("adminPanel").scrollIntoView({behavior:"smooth"});
+ await loadAdminData();
+}
+async function adminLogout(){
+ await supabaseClient.auth.signOut();
+ currentUser=null;
+ $("adminPanel").style.display="none";
+}
+
+function showAdminTab(id,button){
+ document.querySelectorAll(".admin-tab").forEach(x=>x.classList.add("hidden"));
+ $(id).classList.remove("hidden");
+ document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+ button.classList.add("active");
+}
+
+async function loadAdminData(){
+ const {data:admin,error:adminError}=await supabaseClient.rpc("is_admin");
+ if(adminError||admin!==true){alert("Administrator access required.");return}
+ const [ordersResult,expensesResult,productsResult]=await Promise.all([
+  supabaseClient.from("orders").select("*").order("created_at",{ascending:false}),
+  supabaseClient.from("expenses").select("*").order("expense_date",{ascending:false}),
+  supabaseClient.from("products").select("*").order("created_at",{ascending:false})
+ ]);
+ if(ordersResult.error||expensesResult.error||productsResult.error){
+  alert("Could not load all dashboard information. "+(ordersResult.error||expensesResult.error||productsResult.error).message);return;
+ }
+ adminOrders=ordersResult.data||[];
+ adminExpenses=expensesResult.data||[];
+ const revenue=adminOrders.filter(o=>o.payment_status==="paid").reduce((s,o)=>s+Number(o.total_amount||0),0);
+ const expenses=adminExpenses.reduce((s,e)=>s+Number(e.amount||0),0);
+ $("statOrders").textContent=adminOrders.length;
+ $("statRevenue").textContent=money(revenue);
+ $("statExpenses").textContent=money(expenses);
+ $("statProfit").textContent=money(revenue-expenses);
+ renderAdminProducts(productsResult.data||[]);
+ renderAdminOrders();
+ renderExpenses();
+ await loadSettings();
+ $("settingWhatsapp").value=storeSettings.whatsapp_number||"";
+ $("settingBank").value=storeSettings.bank_name||"";
+ $("settingAccountName").value=storeSettings.account_name||"";
+ $("settingAccountNumber").value=storeSettings.account_number||"";
+ $("settingDelivery").value=storeSettings.delivery_information||"";
+}
+
+function renderAdminProducts(list){
+ $("adminProductsTable").innerHTML=list.length?`<table><tr><th>Product</th><th>Price</th><th>Stock</th><th>Actions</th></tr>${list.map(p=>`
+ <tr><td>${safe(p.name)}<br><small>${safe(p.category)}</small></td><td>${money(p.price)}</td><td>${p.stock}</td>
+ <td><button class="btn light" onclick="editProduct('${p.id}')">Edit</button>
+ <button class="btn light" onclick="deleteProduct('${p.id}')">Delete</button></td></tr>`).join("")}</table>`:"No products added yet.";
+}
+
+async function saveProduct(){
+ const id=$("editProductId").value;
+ const name=$("pName").value.trim();
+ const price=Number($("pPrice").value);
+ const stock=Number($("pStock").value);
+ if(!name||!Number.isFinite(price)||price<0||!Number.isInteger(stock)||stock<0){showMessage("productMessage","Enter a product name, valid price and stock quantity.");return}
+ let imageUrl=null;
+ const file=$("pImage").files[0];
+ if(file){
+  if(file.size>2*1024*1024){showMessage("productMessage","Image must be 2 MB or smaller.");return}
+  const ext=file.name.split(".").pop().toLowerCase();
+  const path=crypto.randomUUID()+"."+ext;
+  const {error:uploadError}=await supabaseClient.storage.from("product-images").upload(path,file,{upsert:false});
+  if(uploadError){showMessage("productMessage",uploadError.message);return}
+  const {data}=supabaseClient.storage.from("product-images").getPublicUrl(path);
+  imageUrl=data.publicUrl;
+ }
+ const payload={
+  name,description:$("pDescription").value,
+  price,category:$("pCategory").value,stock,
+  sizes:$("pSizes").value.split(",").map(x=>x.trim()).filter(Boolean),
+  colors:$("pColors").value.split(",").map(x=>x.trim()).filter(Boolean),
+  is_active:true
+ };
+ if(imageUrl)payload.image_url=imageUrl;
+ let result;
+ if(id)result=await supabaseClient.from("products").update(payload).eq("id",id);
+ else result=await supabaseClient.from("products").insert(payload);
+ if(result.error){showMessage("productMessage",result.error.message);return}
+ showMessage("productMessage","Product saved successfully.");
+ clearProductForm();
+ await loadProducts();
+ await loadAdminData();
+}
+
+function clearProductForm(){
+ $("editProductId").value="";
+ ["pName","pDescription","pPrice","pSizes","pColors"].forEach(id=>$(id).value="");
+ $("pStock").value=0;$("pImage").value="";
+ $("productFormHeading").textContent="Add a product";
+}
+function editProduct(id){
+ const p=products.find(x=>x.id===id);
+ if(!p){alert("Refresh the product list and try again.");return}
+ $("editProductId").value=p.id;
+ $("pName").value=p.name||"";
+ $("pDescription").value=p.description||"";
+ $("pPrice").value=p.price;
+ $("pCategory").value=p.category||"Clothing";
+ $("pStock").value=p.stock;
+ $("pSizes").value=(p.sizes||[]).join(", ");
+ $("pColors").value=(p.colors||[]).join(", ");
+ $("productFormHeading").textContent="Edit product";
+ $("productsAdmin").scrollIntoView({behavior:"smooth"});
+}
+async function deleteProduct(id){
+ if(!confirm("Delete this product?"))return;
+ const {error}=await supabaseClient.from("products").delete().eq("id",id);
+ if(error){alert(error.message);return}
+ await loadProducts();await loadAdminData();
+}
+
+function renderAdminOrders(){
+ $("adminOrdersTable").innerHTML=adminOrders.length?`<table>
+ <tr><th>Order</th><th>Customer</th><th>Total</th><th>Payment</th><th>Order status</th><th>Save</th></tr>
+ ${adminOrders.map(o=>`<tr>
+ <td>${safe(o.id.slice(0,8))}<br><small>${new Date(o.created_at).toLocaleDateString()}</small></td>
+ <td>${safe(o.customer_name)}<br>${safe(o.customer_phone)}</td>
+ <td>${money(o.total_amount)}</td>
+ <td><select id="pay-${o.id}"><option ${o.payment_status==="pending"?"selected":""}>pending</option><option ${o.payment_status==="paid"?"selected":""}>paid</option><option ${o.payment_status==="refunded"?"selected":""}>refunded</option></select></td>
+ <td><select id="status-${o.id}"><option ${o.order_status==="pending"?"selected":""}>pending</option><option ${o.order_status==="processing"?"selected":""}>processing</option><option ${o.order_status==="shipped"?"selected":""}>shipped</option><option ${o.order_status==="completed"?"selected":""}>completed</option><option ${o.order_status==="cancelled"?"selected":""}>cancelled</option></select></td>
+ <td><button class="btn yellow" onclick="updateOrder('${o.id}')">Save</button></td>
+ </tr>`).join("")}</table>`:"No orders yet.";
+}
+async function updateOrder(id){
+ const payment_status=$("pay-"+id).value;
+ const order_status=$("status-"+id).value;
+ const {error}=await supabaseClient.from("orders").update({payment_status,order_status,updated_at:new Date().toISOString()}).eq("id",id);
+ if(error){alert(error.message);return}
+ alert("Order updated.");
+ await loadAdminData();
+}
+
+async function addExpense(){
+ const description=$("expenseDescription").value.trim();
+ const category=$("expenseCategory").value;
+ const amount=Number($("expenseAmount").value);
+ const expense_date=$("expenseDate").value||new Date().toISOString().slice(0,10);
+ if(!description||!Number.isFinite(amount)||amount<=0){showMessage("expenseMessage","Enter a description and a valid amount.");return}
+ const {error}=await supabaseClient.from("expenses").insert({
+  description,category,amount,expense_date,notes:$("expenseNotes").value
+ });
+ if(error){showMessage("expenseMessage",error.message);return}
+ ["expenseDescription","expenseAmount","expenseNotes"].forEach(id=>$(id).value="");
+ showMessage("expenseMessage","Expense recorded successfully.");
+ await loadAdminData();
+}
+function renderExpenses(){
+ $("expensesTable").innerHTML=adminExpenses.length?`<table><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th></th></tr>
+ ${adminExpenses.map(e=>`<tr><td>${safe(e.expense_date)}</td><td>${safe(e.description)}</td><td>${safe(e.category)}</td><td>${money(e.amount)}</td><td><button class="btn light" onclick="deleteExpense('${e.id}')">Delete</button></td></tr>`).join("")}</table>`:"No expenses recorded yet.";
+}
+async function deleteExpense(id){
+ if(!confirm("Delete this expense record?"))return;
+ const {error}=await supabaseClient.from("expenses").delete().eq("id",id);
+ if(error){alert(error.message);return}
+ await loadAdminData();
+}
+
+async function saveSettings(){
+ const payload={
+  whatsapp_number:$("settingWhatsapp").value.trim(),
+  bank_name:$("settingBank").value.trim(),
+  account_name:$("settingAccountName").value.trim(),
+  account_number:$("settingAccountNumber").value.trim(),
+  delivery_information:$("settingDelivery").value.trim(),
+  updated_at:new Date().toISOString()
+ };
+ const {error}=await supabaseClient.from("store_settings").update(payload).eq("id",1);
+ if(error){showMessage("settingsMessage",error.message);return}
+ showMessage("settingsMessage","Store settings saved.");
+ await loadSettings();
+}
+
+supabaseClient.auth.onAuthStateChange((_event,session)=>{
+ currentUser=session?.user||null;
+});
+
+$("year").textContent=new Date().getFullYear();
+$("expenseDate").value=new Date().toISOString().slice(0,10);
+renderCart();
+loadSettings();
+loadProducts();
+refreshSession();
+</script>
+</body>
+</html>
