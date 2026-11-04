@@ -762,5 +762,18 @@ loadSettings();
 loadProducts();
 refreshSession();
 </script>
+  <script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register(
+      "/mati-wears-and-accessories-/service-worker.js"
+    ).then(function () {
+      console.log("Mati Wears app is ready");
+    }).catch(function (error) {
+      console.error("Service worker registration failed:", error);
+    });
+  });
+}
+  </script>
 </body>
 </html>
