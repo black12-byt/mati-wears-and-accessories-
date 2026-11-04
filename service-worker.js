@@ -1,4 +1,4 @@
-const CACHE_NAME = "mati-wears-v1";
+const CACHE_NAME = "mati-wears-v2";
 
 self.addEventListener("install", event => {
   self.skipWaiting();
