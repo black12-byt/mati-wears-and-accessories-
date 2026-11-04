@@ -1,1 +1,11 @@
-
+{
+  "name": "Mati Wears & Accessories",
+  "short_name": "Mati Wears",
+  "description": "Shop clothing, shoes, bags and accessories.",
+  "start_url": "/mati-wears-and-accessories-/",
+  "scope": "/mati-wears-and-accessories-/",
+  "display": "standalone",
+  "background_color": "#171717",
+  "theme_color": "#ffd21f",
+  "orientation": "portrait"
+}
