@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="100" fill="#171717"/>
+  <rect x="12" y="12" width="488" height="488" rx="90" fill="none" stroke="#ffd21f" stroke-width="12"/>
+  <path d="M256 75 L285 125 L340 135 L300 175 L310 230 L256 202 L202 230 L212 175 L172 135 L227 125 Z" fill="#ffd21f"/>
+  <path d="M120 285 L120 230 L256 300 L392 230 L392 285 L256 355 Z" fill="#ffd21f"/>
+  <text x="256" y="390" text-anchor="middle" font-family="Arial" font-size="55" font-weight="bold" fill="#ffffff">MATI</text>
+  <text x="256" y="440" text-anchor="middle" font-family="Arial" font-size="32" font-weight="bold" fill="#ffd21f">WEARS</text>
+  <text x="256" y="475" text-anchor="middle" font-family="Arial" font-size="17" fill="#ffffff">&amp; ACCESSORIES</text>
+</svg>
