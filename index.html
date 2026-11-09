@@ -549,35 +549,54 @@ async function placeOrder(){
   order_status:"pending"
  };
  const {error}=await supabaseClient.from("orders").insert(order);
- if(error){showMessage("checkoutMessage","Order could not be saved: "+error.message);return}
- const message=`Hello Mati Wears, I placed an order.\nOrder: ${orderId}\nName: ${name}\nPhone: ${phone}\nAddress: ${address}\nPayment: ${payment}\nItems:\n${cart.map(p=>p.name+" x "+p.quantity+" - "+money(p.price*p.quantity)).join("\n")}\nTotal: ${money(total)}`;
- const whatsapp=String(storeSettings.whatsapp_number||"").replace(/\D/g,"");
- cart=[];
- renderCart();
- closeModal("checkoutModal");
- alert("Your order has been saved. You can now send the order details through WhatsApp.");
- if(whatsapp)window.open("https://wa.me/"+whatsapp+"?text="+encodeURIComponent(message),"_blank");
- await loadProducts();
+ 
+const {error}=await supabaseClient.from("orders").insert(order);
+
+if(error){
+ showMessage("checkoutMessage","Order could not be saved: "+error.message);
+ return;
 }
 
-async function adminLogin(){
- const email=$("adminEmail").value.trim().toLowerCase();
- const password=$("adminPassword").value;
- if(email!==ADMIN_EMAIL){showMessage("adminLoginMessage","This email is not the configured administrator email.");return}
- const {error}=await supabaseClient.auth.signInWithPassword({email,password});
- if(error){showMessage("adminLoginMessage",error.message);return}
- await refreshSession();
- const {data,error:checkError}=await supabaseClient.rpc("is_admin");
- if(checkError||data!==true){
-  await supabaseClient.auth.signOut();
-  showMessage("adminLoginMessage","Administrator access was not confirmed. Check your admin setup.");
-  return;
- }
- closeModal("adminLoginModal");
- $("adminPanel").style.display="block";
- $("adminPanel").scrollIntoView({behavior:"smooth"});
- await loadAdminData();
+const message=`Hello Mati Wears, I placed an order.
+Order: ${orderId}
+Name: ${name}
+Phone: ${phone}
+Address: ${address}
+Payment: ${payment}
+Items:
+${cart.map(p=>p.name+" x "+p.quantity+" - "+money(p.price*p.quantity)).join("\n")}
+Total: ${money(total)}`;
+
+const whatsapp=String(storeSettings.whatsapp_number||"").replace(/\D/g,"");
+
+const whatsappUrl=whatsapp
+ ? "https://wa.me/"+whatsapp+"?text="+encodeURIComponent(message)
+ : "";
+
+cart=[];
+renderCart();
+
+const checkoutMessage=$("checkoutMessage");
+
+if(whatsappUrl){
+ checkoutMessage.innerHTML=`
+ <strong>Order placed successfully!</strong>
+ <p>Your order has been saved. Please confirm it through WhatsApp.</p>
+ <a class="btn yellow"
+ style="display:block;text-align:center;text-decoration:none;width:100%;"
+ href="${whatsappUrl}"
+ target="_blank"
+ rel="noopener">
+ CONFIRM ORDER ON WHATSAPP
+ </a>`;
+}else{
+ checkoutMessage.innerHTML=`
+ <strong>Your order has been saved!</strong>
+ <p>WhatsApp number is missing. Please configure it in Admin Settings.</p>`;
 }
+
+await loadProducts();
+
 async function adminLogout(){
  await supabaseClient.auth.signOut();
  currentUser=null;
