@@ -400,10 +400,716 @@ async function loadSettings(){
 
  storeSettings = data || {};
 
- $("bankDetails").textContent = storeSettings.bank_name
-  ? `Bank: ${storeSettings.bank_name} | Account name: ${storeSettings.account_name || ""} | Account number: ${storeSettings.account_number || ""}`
-  : "Bank transfer details will be provided by the store administrator.";
+$("bankDetails").textContent = storeSettings.bank_name
+ ? `Bank: ${storeSettings.bank_name} | Account name: ${storeSettings.account_name || ""} | Account number: ${storeSettings.account_number || ""}`
+ : "Bank transfer details will be provided by the store administrator.";
 
- $("footerContact").textContent = storeSettings.whatsapp_number
-  ? "WhatsApp: " + storeSettings.whatsapp_number
-  : "Contact us through WhatsApp for enquirie
+$("footerContact").textContent = storeSettings.whatsapp_number
+ ? "WhatsApp: " + storeSettings.whatsapp_number
+ : "Contact us through WhatsApp for enquiries and orders.";
+
+$("footerDelivery").textContent = storeSettings.delivery_information || "";
+}
+
+/* PRODUCTS */
+async function loadProducts(){
+ const {data,error} = await supabaseClient
+  .from("products")
+  .select("*")
+  .eq("is_active",true)
+  .order("created_at",{ascending:false});
+
+ if(error){
+  $("productGrid").innerHTML = '<div class="empty">Unable to load products. Please refresh.</div>';
+  console.error("Products:",error);
+  return;
+ }
+
+ products = data || [];
+ renderProducts();
+}
+
+function filterCategory(category){
+ activeCategory = category || "All";
+ $("categoryFilter").value = activeCategory;
+ $("productHeading").textContent = activeCategory === "All" ? "Our Products" : activeCategory;
+ renderProducts();
+ $("shop").scrollIntoView({behavior:"smooth"});
+}
+
+function renderProducts(){
+ const search = ($("searchInput")?.value || "").toLowerCase().trim();
+
+ const list = products.filter(p =>
+  (activeCategory === "All" || p.category === activeCategory) &&
+  (p.name || "").toLowerCase().includes(search)
+ );
+
+ if(!list.length){
+  $("productGrid").innerHTML = '<div class="empty">No products found in this category yet.</div>';
+  return;
+ }
+
+ $("productGrid").innerHTML = list.map(p => `
+  <article class="product">
+   <img src="${safe(p.image_url || "https://placehold.co/500x500/f3f3f3/333?text=Mati+Wears")}" alt="${safe(p.name)}">
+   <div class="product-info">
+    <h3>${safe(p.name)}</h3>
+    <p class="price">${money(p.price)}</p>
+    <p style="font-size:12px;color:#777;margin-bottom:10px">${safe(p.category || "")}</p>
+    <button class="btn yellow" onclick="addToCart('${safe(p.id)}')">ADD TO CART</button>
+   </div>
+  </article>
+ `).join("");
+}
+
+/* SHOPPING CART */
+function addToCart(id){
+ const p = products.find(x => String(x.id) === String(id));
+ if(!p) return;
+
+ if(Number(p.stock) <= 0){
+  alert("This product is currently out of stock.");
+  return;
+ }
+
+ const existing = cart.find(x => String(x.id) === String(id));
+
+ if(existing){
+  if(existing.quantity >= Number(p.stock)){
+   alert("You have reached the available stock quantity.");
+   return;
+  }
+  existing.quantity++;
+ }else{
+  cart.push({
+   id:p.id,
+   name:p.name,
+   price:Number(p.price),
+   image_url:p.image_url,
+   quantity:1,
+   stock:Number(p.stock)
+  });
+ }
+
+ renderCart();
+ alert("Product added to cart.");
+}
+
+function renderCart(){
+ $("cartCount").textContent = cart.reduce((s,p)=>s+p.quantity,0);
+
+ $("cartItems").innerHTML = cart.length
+  ? cart.map(p => `
+   <div class="rowline">
+    <div><strong>${safe(p.name)}</strong><br>${money(p.price)} × ${p.quantity}</div>
+    <div>
+     <button class="btn light" onclick="changeQuantity('${safe(p.id)}',-1)">−</button>
+     <button class="btn light" onclick="changeQuantity('${safe(p.id)}',1)">+</button>
+     <button class="btn light" onclick="removeCartItem('${safe(p.id)}')">×</button>
+    </div>
+   </div>
+  `).join("")
+  : "<p>Your cart is empty.</p>";
+
+ $("cartTotal").textContent = money(
+  cart.reduce((s,p)=>s+p.price*p.quantity,0)
+ );
+}
+
+function changeQuantity(id,change){
+ const item = cart.find(p=>String(p.id)===String(id));
+ if(!item) return;
+
+ const next = item.quantity + change;
+
+ if(next <= 0){
+  removeCartItem(id);
+  return;
+ }
+
+ if(next > item.stock){
+  alert("There is not enough stock available.");
+  return;
+ }
+
+ item.quantity = next;
+ renderCart();
+}
+
+function removeCartItem(id){
+ cart = cart.filter(p=>String(p.id)!==String(id));
+ renderCart();
+}
+
+/* CUSTOMER AUTHENTICATION */
+async function signup(){
+ const email = $("loginEmail").value.trim();
+ const password = $("loginPassword").value;
+
+ if(!email || password.length < 6){
+  showMessage("accountMessage","Enter a valid email and a password with at least 6 characters.");
+  return;
+ }
+
+ const redirectUrl = window.location.origin + window.location.pathname;
+
+ const {data,error} = await supabaseClient.auth.signUp({
+  email,
+  password,
+  options:{
+   emailRedirectTo:redirectUrl
+  }
+ });
+
+ if(error){
+  showMessage("accountMessage",error.message);
+  return;
+ }
+
+ if(data.session){
+  await refreshSession();
+  renderAccount();
+  showMessage("accountMessage","Your account has been created successfully.");
+ }else{
+  showMessage("accountMessage","Registration successful. Please check your email to verify your account.");
+ }
+}
+
+async function login(){
+ const email = $("loginEmail").value.trim();
+ const password = $("loginPassword").value;
+
+ if(!email || !password){
+  showMessage("accountMessage","Enter your email and password.");
+  return;
+ }
+
+ const {error} = await supabaseClient.auth.signInWithPassword({email,password});
+
+ if(error){
+  showMessage("accountMessage",error.message);
+  return;
+ }
+
+ await refreshSession();
+ renderAccount();
+}
+
+async function logout(){
+ await supabaseClient.auth.signOut();
+ currentUser = null;
+ isAdmin = false;
+ $("adminPanel").style.display = "none";
+ renderAccount();
+}
+
+async function refreshSession(){
+ const {data,error} = await supabaseClient.auth.getSession();
+ if(error) console.error(error);
+ currentUser = data?.session?.user || null;
+}
+
+async function renderAccount(){
+ if(!currentUser){
+  $("accountContent").innerHTML = `
+   <div class="field"><label>Email</label><input id="loginEmail" type="email" autocomplete="email"></div>
+   <div class="field"><label>Password</label><input id="loginPassword" type="password" autocomplete="current-password"></div>
+   <button class="btn yellow" onclick="login()">Log in</button>
+   <button class="btn light" onclick="signup()">Create account</button>
+   <p id="accountMessage" class="message"></p>
+  `;
+  return;
+ }
+
+ $("accountContent").innerHTML = `
+  <p>Signed in as <strong>${safe(currentUser.email)}</strong></p>
+  <div class="account-orders">
+   <h3>My Orders</h3>
+   <div id="myOrders">Loading your orders...</div>
+  </div>
+  <button class="btn dark" style="margin-top:18px" onclick="logout()">Log out</button>
+ `;
+
+ await loadMyOrders();
+}
+
+async function loadMyOrders(){
+ if(!currentUser) return;
+
+ const {data,error} = await supabaseClient
+  .from("orders")
+  .select("id,total_amount,payment_method,payment_status,order_status,created_at")
+  .eq("customer_id",currentUser.id)
+  .order("created_at",{ascending:false});
+
+ if(error){
+  $("myOrders").textContent = "Unable to load orders.";
+  console.error(error);
+  return;
+ }
+
+ if(!data || !data.length){
+  $("myOrders").textContent = "You have not placed any orders yet.";
+  return;
+ }
+
+ $("myOrders").innerHTML = data.map(o=>`
+  <div class="rowline">
+   <div>
+    <strong>Order ${safe(String(o.id).slice(0,8))}</strong><br>
+    ${new Date(o.created_at).toLocaleDateString()}
+   </div>
+   <div>
+    ${money(o.total_amount)}<br>
+    <small>${safe(o.order_status)} / ${safe(o.payment_status)}</small>
+   </div>
+  </div>
+ `).join("");
+}
+
+/* CHECKOUT */
+async function openCheckout(){
+ if(!cart.length){
+  alert("Your cart is empty.");
+  return;
+ }
+
+ closeModal("cartModal");
+
+ if(currentUser){
+  $("customerEmail").value = currentUser.email || "";
+
+  const {data} = await supabaseClient
+   .from("profiles")
+   .select("full_name,phone")
+   .eq("id",currentUser.id)
+   .maybeSingle();
+
+  if(data){
+   $("customerName").value = data.full_name || "";
+   $("customerPhone").value = data.phone || "";
+  }
+ }
+
+ openModal("checkoutModal");
+}
+
+async function placeOrder(){
+ const name = $("customerName").value.trim();
+ const email = $("customerEmail").value.trim();
+ const phone = $("customerPhone").value.trim();
+ const address = $("customerAddress").value.trim();
+ const payment = $("paymentMethod").value;
+
+ if(!name || !phone || !address){
+  showMessage("checkoutMessage","Please complete your name, phone number and delivery address.");
+  return;
+ }
+
+ if(!cart.length){
+  showMessage("checkoutMessage","Your cart is empty.");
+  return;
+ }
+
+ for(const item of cart){
+  const {data,error} = await supabaseClient
+   .from("products")
+   .select("id,stock,is_active,name,price")
+   .eq("id",item.id)
+   .maybeSingle();
+
+  if(error || !data || !data.is_active){
+   showMessage("checkoutMessage","A product in your cart is no longer available. Please refresh your cart.");
+   return;
+  }
+
+  if(Number(data.stock) < item.quantity){
+   showMessage("checkoutMessage",`There is not enough stock for ${data.name}. Please update your cart.`);
+   return;
+  }
+ }
+
+ const total = cart.reduce((s,p)=>s+p.price*p.quantity,0);
+ const orderId = crypto.randomUUID();
+
+ const items = cart.map(p=>({
+  product_id:p.id,
+  name:p.name,
+  price:p.price,
+  quantity:p.quantity
+ }));
+
+ const order = {
+  id:orderId,
+  customer_id:currentUser?.id || null,
+  customer_name:name,
+  customer_email:email || null,
+  customer_phone:phone,
+  delivery_address:address,
+  items,
+  subtotal:total,
+  delivery_fee:0,
+  total_amount:total,
+  payment_method:payment,
+  payment_status:"pending",
+  order_status:"pending"
+ };
+
+ const submitButton = document.querySelector("#checkoutModal button[onclick='placeOrder()']");
+ submitButton.disabled = true;
+ submitButton.textContent = "PLACING ORDER...";
+
+ try{
+  const {error} = await supabaseClient.from("orders").insert(order);
+
+  if(error){
+   showMessage("checkoutMessage","Order could not be saved: " + error.message);
+   return;
+  }
+
+  const whatsapp = String(storeSettings.whatsapp_number || "").replace(/\D/g,"");
+
+  const orderLines = cart.map(p =>
+   `${p.name} - ${p.quantity} x ${money(p.price)}`
+  ).join("\n");
+
+  const whatsappMessage =
+   `Hello Mati Wears & Accessories, I have placed an order.\n\n` +
+   `Order ID: ${orderId}\n` +
+   `Customer: ${name}\n` +
+   `Phone: ${phone}\n` +
+   `Email: ${email || "Not provided"}\n` +
+   `Delivery address: ${address}\n\n` +
+   `Items:\n${orderLines}\n\n` +
+   `Total: ${money(total)}\n` +
+   `Payment method: ${payment}`;
+
+  const whatsappUrl = whatsapp
+   ? "https://wa.me/" + whatsapp + "?text=" + encodeURIComponent(whatsappMessage)
+   : "";
+
+  cart = [];
+  renderCart();
+
+  if(whatsappUrl){
+   $("checkoutMessage").innerHTML =
+    '<strong>Order placed successfully!</strong><br>' +
+    'Your order has been saved. Tap the link below to send the order details to Mati on WhatsApp.<br><br>' +
+    '<a class="btn yellow" style="display:inline-block" href="' + safe(whatsappUrl) + '" target="_blank" rel="noopener">CONFIRM ORDER ON WHATSAPP</a>';
+  }else{
+   showMessage("checkoutMessage","Your order has been saved, but the store has not configured its WhatsApp number yet. Please contact the store.");
+  }
+
+  await loadProducts();
+
+ }catch(error){
+  console.error(error);
+  showMessage("checkoutMessage","An unexpected error occurred. Please try again.");
+ }finally{
+  submitButton.disabled = false;
+  submitButton.textContent = "PLACE ORDER";
+ }
+}
+
+/* ADMIN AUTHENTICATION */
+async function adminLogin(){
+ const email = $("adminEmail").value.trim().toLowerCase();
+ const password = $("adminPassword").value;
+
+ if(!email || !password){
+  showMessage("adminLoginMessage","Enter your administrator email and password.");
+  return;
+ }
+
+ if(email !== ADMIN_EMAIL.toLowerCase()){
+  showMessage("adminLoginMessage","This email is not authorised for administrator login.");
+  return;
+ }
+
+ const {error} = await supabaseClient.auth.signInWithPassword({email,password});
+
+ if(error){
+  showMessage("adminLoginMessage",error.message);
+  return;
+ }
+
+ await refreshSession();
+
+ const {data:admin,error:adminError} = await supabaseClient.rpc("is_admin");
+
+ if(adminError || admin !== true){
+  await supabaseClient.auth.signOut();
+  currentUser = null;
+  showMessage("adminLoginMessage","Administrator access was denied. Check your admin permissions.");
+  return;
+ }
+
+ isAdmin = true;
+ closeModal("adminLoginModal");
+ $("adminPanel").style.display = "block";
+ $("adminPanel").scrollIntoView({behavior:"smooth"});
+ await loadAdminData();
+}
+
+async function adminLogout(){
+ await supabaseClient.auth.signOut();
+ currentUser = null;
+ isAdmin = false;
+ $("adminPanel").style.display = "none";
+ alert("Administrator logged out.");
+}
+
+function showAdminTab(id,button){
+ document.querySelectorAll(".admin-tab").forEach(x=>x.classList.add("hidden"));
+ $(id).classList.remove("hidden");
+
+ document.querySelectorAll(".tabs .tab").forEach(x=>x.classList.remove("active"));
+ button.classList.add("active");
+}
+
+/* ADMIN DATA */
+async function loadAdminData(){
+ if(!isAdmin){
+  alert("Administrator access required.");
+  return;
+ }
+
+ const {data:admin,error:adminError} = await supabaseClient.rpc("is_admin");
+
+ if(adminError || admin !== true){
+  alert("Administrator access required.");
+  $("adminPanel").style.display = "none";
+  isAdmin = false;
+  return;
+ }
+
+ const [ordersResult,expensesResult,productsResult] = await Promise.all([
+  supabaseClient.from("orders").select("*").order("created_at",{ascending:false}),
+  supabaseClient.from("expenses").select("*").order("expense_date",{ascending:false}),
+  supabaseClient.from("products").select("*").order("created_at",{ascending:false})
+ ]);
+
+ if(ordersResult.error || expensesResult.error || productsResult.error){
+  alert("Some dashboard information could not be loaded. Check your database permissions.");
+  console.error(ordersResult.error,expensesResult.error,productsResult.error);
+  return;
+ }
+
+ adminOrders = ordersResult.data || [];
+ adminExpenses = expensesResult.data || [];
+
+ const revenue = adminOrders
+  .filter(o=>o.payment_status==="paid")
+  .reduce((s,o)=>s+Number(o.total_amount||0),0);
+
+ const expenses = adminExpenses
+  .reduce((s,e)=>s+Number(e.amount||0),0);
+
+ $("statOrders").textContent = adminOrders.length;
+ $("statRevenue").textContent = money(revenue);
+ $("statExpenses").textContent = money(expenses);
+ $("statProfit").textContent = money(revenue-expenses);
+
+ renderAdminProducts(productsResult.data || []);
+ renderAdminOrders();
+ renderExpenses();
+ await loadSettings();
+
+ $("settingWhatsapp").value = storeSettings.whatsapp_number || "";
+ $("settingBank").value = storeSettings.bank_name || "";
+ $("settingAccountName").value = storeSettings.account_name || "";
+ $("settingAccountNumber").value = storeSettings.account_number || "";
+ $("settingDelivery").value = storeSettings.delivery_information || "";
+}
+
+function renderAdminProducts(list){
+ $("adminProductsTable").innerHTML = list.length ? `
+  <table>
+   <tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Actions</th></tr>
+   ${list.map(p=>`
+    <tr>
+     <td>${safe(p.name)}</td>
+     <td>${safe(p.category)}</td>
+     <td>${money(p.price)}</td>
+     <td>${safe(p.stock)}</td>
+     <td>
+      <button class="btn yellow" onclick="editProduct('${safe(p.id)}')">Edit</button>
+      <button class="btn light" onclick="deleteProduct('${safe(p.id)}')">Delete</button>
+     </td>
+    </tr>
+   `).join("")}
+  </table>
+ ` : "No products have been added.";
+}
+
+/* PRODUCT MANAGEMENT */
+async function saveProduct(){
+ if(!isAdmin){
+  alert("Administrator access required.");
+  return;
+ }
+
+ const id = $("editProductId").value;
+ const name = $("pName").value.trim();
+ const price = Number($("pPrice").value);
+ const stock = Number($("pStock").value);
+
+ if(!name || !Number.isFinite(price) || price<0 || !Number.isInteger(stock) || stock<0){
+  showMessage("productMessage","Enter a product name, valid price and valid stock quantity.");
+  return;
+ }
+
+ let imageUrl = null;
+ const file = $("pImage").files[0];
+
+ if(file){
+  if(file.size > 2*1024*1024){
+   showMessage("productMessage","Image must be 2MB or smaller.");
+   return;
+  }
+
+  const extension = file.name.split(".").pop().toLowerCase();
+  if(!["jpg","jpeg","png","webp"].includes(extension)){
+   showMessage("productMessage","Use a JPG, PNG or WEBP image.");
+   return;
+  }
+
+  const path = crypto.randomUUID()+"."+extension;
+
+  const {error:uploadError} = await supabaseClient.storage
+   .from("product-images")
+   .upload(path,file,{upsert:false});
+
+  if(uploadError){
+   showMessage("productMessage","Image upload failed: "+uploadError.message);
+   return;
+  }
+
+  const {data:urlData} = supabaseClient.storage
+   .from("product-images")
+   .getPublicUrl(path);
+
+  imageUrl = urlData.publicUrl;
+ }
+
+ const payload = {
+  name,
+  description:$("pDescription").value.trim(),
+  price,
+  category:$("pCategory").value,
+  stock,
+  sizes:$("pSizes").value.split(",").map(x=>x.trim()).filter(Boolean),
+  colors:$("pColors").value.split(",").map(x=>x.trim()).filter(Boolean),
+  is_active:true
+ };
+
+ if(imageUrl) payload.image_url = imageUrl;
+
+ let result;
+
+ if(id){
+  result = await supabaseClient.from("products").update(payload).eq("id",id);
+ }else{
+  result = await supabaseClient.from("products").insert(payload);
+ }
+
+ if(result.error){
+  showMessage("productMessage",result.error.message);
+  return;
+ }
+
+ showMessage("productMessage","Product saved successfully.");
+ clearProductForm();
+ await loadProducts();
+ await loadAdminData();
+}
+
+function clearProductForm(){
+ $("editProductId").value = "";
+ ["pName","pDescription","pPrice","pSizes","pColors"].forEach(id=>$(id).value="");
+ $("pStock").value = 0;
+ $("pImage").value = "";
+ $("productFormHeading").textContent = "Add a product";
+}
+
+function editProduct(id){
+ const p = products.find(x=>String(x.id)===String(id));
+
+ if(!p){
+  alert("Refresh the product list and try again.");
+  return;
+ }
+
+ $("editProductId").value = p.id;
+ $("pName").value = p.name || "";
+ $("pDescription").value = p.description || "";
+ $("pPrice").value = p.price;
+ $("pCategory").value = p.category || "Clothing";
+ $("pStock").value = p.stock;
+ $("pSizes").value = (p.sizes || []).join(", ");
+ $("pColors").value = (p.colors || []).join(", ");
+ $("productFormHeading").textContent = "Edit product";
+ $("productsAdmin").scrollIntoView({behavior:"smooth"});
+}
+
+async function deleteProduct(id){
+ if(!isAdmin || !confirm("Delete this product?")) return;
+
+ const {error} = await supabaseClient.from("products").delete().eq("id",id);
+
+ if(error){
+  alert(error.message);
+  return;
+ }
+
+ await loadProducts();
+ await loadAdminData();
+}
+
+/* ORDER MANAGEMENT */
+function renderAdminOrders(){
+ $("adminOrdersTable").innerHTML = adminOrders.length ? `
+  <table>
+   <tr><th>Order</th><th>Customer</th><th>Total</th><th>Payment</th><th>Order status</th><th>Save</th></tr>
+   ${adminOrders.map(o=>`
+    <tr>
+     <td>${safe(String(o.id).slice(0,8))}<br><small>${o.created_at ? new Date(o.created_at).toLocaleDateString() : ""}</small></td>
+     <td>${safe(o.customer_name)}<br>${safe(o.customer_phone)}</td>
+     <td>${money(o.total_amount)}</td>
+     <td>
+      <select id="pay-${safe(o.id)}">
+       <option ${o.payment_status==="pending"?"selected":""}>pending</option>
+       <option ${o.payment_status==="paid"?"selected":""}>paid</option>
+       <option ${o.payment_status==="refunded"?"selected":""}>refunded</option>
+      </select>
+     </td>
+     <td>
+      <select id="status-${safe(o.id)}">
+       <option ${o.order_status==="pending"?"selected":""}>pending</option>
+       <option ${o.order_status==="processing"?"selected":""}>processing</option>
+       <option ${o.order_status==="shipped"?"selected":""}>shipped</option>
+       <option ${o.order_status==="completed"?"selected":""}>completed</option>
+       <option ${o.order_status==="cancelled"?"selected":""}>cancelled</option>
+      </select>
+     </td>
+     <td><button class="btn yellow" onclick="updateOrder('${safe(o.id)}')">Save</button></td>
+    </tr>
+   `).join("")}
+  </table>
+ ` : "No orders yet.";
+}
+
+async function updateOrder(id){
+ if(!isAdmin) return;
+
+ const payment_status = $("pay-"+id).value;
+ const order_status = $("status-"+id).value;
+
+ const {error} = await supabaseClient
+  .from("orders")
+  .update({payment_status,order_status,updated_at:new Date().toISOString()})
+  .eq("id",id);
+
+ if(error){
+  alert(error.
