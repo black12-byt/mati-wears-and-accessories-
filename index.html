@@ -1146,3 +1146,41 @@ async function addExpense(){
   showMessage("expenseMessage",error.message);
   return;
   }
+  ["expenseDescription","expenseAmount","expenseNotes"].forEach(id=>$(id).value="");
+ showMessage("expenseMessage","Expense recorded successfully.");
+ await loadAdminData();
+}
+
+function renderExpenses(){
+ $("expensesTable").innerHTML = adminExpenses.length ? `
+  <table>
+   <tr><th>Description</th><th>Category</th><th>Amount</th><th>Date</th><th>Action</th></tr>
+   ${adminExpenses.map(e=>`
+    <tr>
+     <td>${safe(e.description)}</td>
+     <td>${safe(e.category)}</td>
+     <td>${money(e.amount)}</td>
+     <td>${safe(e.expense_date)}</td>
+     <td><button class="btn light" onclick="deleteExpense('${safe(e.id)}')">Delete</button></td>
+    </tr>
+   `).join("")}
+  </table>
+ ` : "No expenses recorded.";
+}
+
+async function deleteExpense(id){
+ if(!isAdmin || !confirm("Delete this expense record?")) return;
+
+ const {error} = await supabaseClient.from("expenses").delete().eq("id",id);
+
+ if(error){
+  alert(error.message);
+  return;
+ }
+
+ await loadAdminData();
+}
+
+/* STORE SETTINGS */
+async function saveSettings(){
+ if(!isAdmin) return;
