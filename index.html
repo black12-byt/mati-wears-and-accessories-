@@ -1112,4 +1112,37 @@ async function updateOrder(id){
   .eq("id",id);
 
  if(error){
-  alert(error.
+  alert(error.message);
+  return;
+ }
+
+ alert("Order updated.");
+ await loadAdminData();
+}
+
+/* EXPENSE MANAGEMENT */
+async function addExpense(){
+ if(!isAdmin) return;
+
+ const description = $("expenseDescription").value.trim();
+ const category = $("expenseCategory").value;
+ const amount = Number($("expenseAmount").value);
+ const expense_date = $("expenseDate").value || new Date().toISOString().slice(0,10);
+
+ if(!description || !Number.isFinite(amount) || amount<=0){
+  showMessage("expenseMessage","Enter a description and a valid amount.");
+  return;
+ }
+
+ const {error} = await supabaseClient.from("expenses").insert({
+  description,
+  category,
+  amount,
+  expense_date,
+  notes:$("expenseNotes").value
+ });
+
+ if(error){
+  showMessage("expenseMessage",error.message);
+  return;
+  }
