@@ -1183,4 +1183,57 @@ async function deleteExpense(id){
 
 /* STORE SETTINGS */
 async function saveSettings(){
- if(!isAdmin) return;
+  if(!isAdmin)return;
+
+  const payload={
+    id:1,
+    whatsapp_number:$("settingWhatsapp").value.trim().replace(/\D/g,""),
+    bank_name:$("settingBank").value.trim(),
+    account_name:$("settingAccountName").value.trim(),
+    account_number:$("settingAccountNumber").value.trim(),
+    delivery_information:$("settingDelivery").value.trim(),
+    updated_at:new Date().toISOString()
+  };
+
+  const {error}=await db
+    .from("store_settings")
+    .upsert(payload,{onConflict:"id"});
+
+  if(error){
+    return message("settingsMessage",error.message,true);
+  }
+
+  message("settingsMessage","Store settings saved successfully.");
+  await loadSettings();
+}
+
+async function startApp(){
+  if(!db){
+    $("productGrid").innerHTML=
+      '<div class="empty">Supabase connection unavailable.</div>';
+    return;
+  }
+
+  await loadSettings();
+  await loadProducts();
+
+  const {data}=await db.auth.getSession();
+  currentUser=data.session?.user||null;
+
+  if(currentUser){
+    await ensureProfile();
+  }
+
+  db.auth.onAuthStateChange((_event,session)=>{
+    currentUser=session?.user||null;
+  });
+
+  if(location.hash==="#admin"){
+    show("adminLoginOverlay");
+  }
+}
+
+startApp();
+</script>
+</body>
+</html>
