@@ -413,21 +413,29 @@ $("footerDelivery").textContent = storeSettings.delivery_information || "";
 
 /* PRODUCTS */
 async function loadProducts(){
+
  const {data,error} = await supabaseClient
   .from("products")
   .select("*")
   .eq("is_active",true)
   .order("created_at",{ascending:false});
 
+ console.log("SUPABASE PRODUCTS:",data);
+ console.log("SUPABASE ERROR:",error);
+
  if(error){
-  $("productGrid").innerHTML = '<div class="empty">Unable to load products. Please refresh.</div>';
-  console.error("Products:",error);
+  $("productGrid").innerHTML =
+   '<div class="empty">Unable to load products.</div>';
   return;
  }
 
  products = data || [];
+
+ console.log("TOTAL PRODUCTS:",products.length);
+ console.log("PRODUCT CATEGORIES:",products.map(p => p.category));
+
  renderProducts();
-}
+  }
 
 function filterCategory(category){
  activeCategory = category || "All";
