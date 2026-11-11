@@ -430,6 +430,9 @@ async function loadProducts(){
  }
 
  products = data || [];
+  activeCategory = "All";
+$("searchInput").value = "";
+renderProducts();
 
  console.log("TOTAL PRODUCTS:",products.length);
  console.log("PRODUCT CATEGORIES:",products.map(p => p.category));
