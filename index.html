@@ -416,37 +416,29 @@ async function loadProducts(){
 
  const {data,error} = await supabaseClient
   .from("products")
-  .select("*")
+  .select("id,name,category,is_active")
   .eq("is_active",true)
   .order("created_at",{ascending:false});
 
- console.log("SUPABASE PRODUCTS:",data);
- console.log("SUPABASE ERROR:",error);
-
  if(error){
   $("productGrid").innerHTML =
-   '<div class="empty">Unable to load products.</div>';
+   `<div class="empty">
+    PUBLIC DATABASE ERROR: ${safe(error.message)}
+   </div>`;
   return;
  }
 
  products = data || [];
-  activeCategory = "All";
-$("searchInput").value = "";
-renderProducts();
 
- console.log("TOTAL PRODUCTS:",products.length);
- console.log("PRODUCT CATEGORIES:",products.map(p => p.category));
-
- renderProducts();
+ $("productGrid").innerHTML =
+  `<div class="empty">
+   <h3>PUBLIC DATABASE TEST</h3>
+   <p>Products received: ${products.length}</p>
+   <p>${products.map(p =>
+    safe(p.name) + " — " + safe(p.category)
+   ).join("<br>")}</p>
+  </div>`;
   }
-
-function filterCategory(category){
- activeCategory = category || "All";
- $("categoryFilter").value = activeCategory;
- $("productHeading").textContent = activeCategory === "All" ? "Our Products" : activeCategory;
- renderProducts();
- $("shop").scrollIntoView({behavior:"smooth"});
-}
 
 function renderProducts(){
  const search = ($("searchInput")?.value || "").toLowerCase().trim();
